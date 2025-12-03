@@ -1,173 +1,191 @@
+/* ---------- ROOT COLORS ---------- */
+:root {
+  --bg: #0b0f12;
+  --card-bg: rgba(255, 255, 255, 0.15);
+  --card-border: rgba(255, 255, 255, 0.25);
+  --glass-blur: 14px;
+
+  --accent: #03e9f4;
+  --text-light: #ffffff;
+  --input-bg: rgba(255, 255, 255, 0.35);
+}
+
+/* ---------- BASE ---------- */
 body {
-	font-family: Arial, sans-serif;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 100vh;
-	margin: 0;
-	background-image: url("https://cdn.ironman.my.id/i/2iceb4.jpeg");
-	background-size: cover;
-	background-position: center;
+  font-family: "Inter", Arial, sans-serif;
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-image: url("https://cdn.ironman.my.id/i/2iceb4.jpeg");
+  background-size: cover;
+  background-position: center;
 }
 
+/* ---------- CARD ---------- */
 .card {
-	padding: 20px;
-	border-radius: 6px;
-	backdrop-filter: blur(4px);
-	background: rgba(255, 255, 255, 0.2);
-	box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-	width: 300px;
-	text-align: center;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
+  width: 350px;
+  padding: 32px;
+  text-align: center;
+
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(var(--glass-blur));
+  border-radius: 16px;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
+/* hover: lift effect */
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- INPUT ---------- */
 input {
-	width: 80%;
-	padding: 10px;
-	margin-bottom: 10px;
-	border: 1px solid #ccc;
-	border-radius: 5px;
-	background-color: rgba(255, 255, 255, 0.5);
-	text-align: center;
+  width: 85%;
+  padding: 12px;
+  margin-bottom: 14px;
+
+  border: none;
+  border-radius: 8px;
+  background: var(--input-bg);
+  text-align: center;
+
+  font-size: 15px;
+  transition: 0.3s ease;
 }
 
+/* input hover / focus effect */
+input:hover,
+input:focus {
+  background: rgba(255, 255, 255, 0.55);
+  outline: 2px solid var(--accent);
+}
+
+/* ---------- NEON BUTTON ---------- */
 a {
-	position: relative;
-	display: inline-block;
-	padding: 15px 35px;
-	margin: 6px 0;
-	color: #fff;
-	text-decoration: none;
-	text-transform: uppercase;
-	transition: 0.5s;
-	letter-spacing: 4px;
-	overflow: hidden;
-	margin-right: 50px;
-	margin-left: 50px;
+  position: relative;
+  padding: 14px 40px;
+  margin: 10px 0;
+  color: #fff;
+  text-decoration: none;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+
+  transition: 0.4s ease;
+  cursor: pointer;
+  display: inline-block;
 }
 
+/* modern neon hover */
 a:hover {
-	background: #03e9f4;
-	color: #050801;
-	box-shadow:
-		0 0 5px #03e9f4,
-		0 0 25px #03e9f4,
-		0 0 50px #03e9f4,
-		0 0 200px #03e9f4;
-	-webkit-box-reflect: below 1px linear-gradient(transparent, #0005);
+  background: var(--accent);
+  color: #050801;
+  border-radius: 6px;
+  box-shadow:
+    0 0 6px var(--accent),
+    0 0 20px var(--accent),
+    0 0 40px var(--accent);
 }
 
+/* ---------- BUTTON ANIMATED BORDER ---------- */
 a span {
-	position: absolute;
-	display: block;
+  position: absolute;
+  display: block;
 }
 
+/* smoother glow */
+a span:nth-child(1),
+a span:nth-child(3) {
+  height: 3px;
+}
+a span:nth-child(2),
+a span:nth-child(4) {
+  width: 3px;
+}
+
+/* animations remain same (looks good) */
 a span:nth-child(1) {
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 8px;
-	background: linear-gradient(90deg, transparent, #03e9f4);
-	animation: animate1 2s linear infinite;
+  top: 0; left: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent));
+  animation: animate1 2s linear infinite;
 }
 
 @keyframes animate1 {
-	0% {
-		left: -100%;
-	}
-
-	50%,
-	100% {
-		left: 100%;
-	}
+  0% { left: -100%; }
+  100% { left: 100%; }
 }
 
 a span:nth-child(2) {
-	top: -100%;
-	right: 0;
-	width: 2px;
-	height: 100%;
-	background: linear-gradient(180deg, transparent, #03e9f4);
-	animation: animate2 1s linear infinite;
-	animation-delay: 0.25s;
+  top: -100%; right: 0;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, var(--accent));
+  animation: animate2 2s linear infinite;
+  animation-delay: .25s;
 }
 
 @keyframes animate2 {
-	0% {
-		top: -100%;
-	}
-
-	50%,
-	100% {
-		top: 100%;
-	}
+  0% { top: -100%; }
+  100% { top: 100%; }
 }
 
 a span:nth-child(3) {
-	bottom: 0;
-	right: 0;
-	width: 100%;
-	height: 2px;
-	background: linear-gradient(270deg, transparent, #03e9f4);
-	animation: animate3 1s linear infinite;
-	animation-delay: 0.5s;
+  bottom: 0; right: 0;
+  width: 100%;
+  background: linear-gradient(270deg, transparent, var(--accent));
+  animation: animate3 2s linear infinite;
+  animation-delay: .5s;
 }
 
 @keyframes animate3 {
-	0% {
-		right: -100%;
-	}
-
-	50%,
-	100% {
-		right: 100%;
-	}
+  0% { right: -100%; }
+  100% { right: 100%; }
 }
 
 a span:nth-child(4) {
-	bottom: -100%;
-	left: 0;
-	width: 2px;
-	height: 100%;
-	background: linear-gradient(360deg, transparent, #03e9f4);
-	animation: animate4 1s linear infinite;
-	animation-delay: 0.75s;
+  bottom: -100%; left: 0;
+  height: 100%;
+  background: linear-gradient(360deg, transparent, var(--accent));
+  animation: animate4 2s linear infinite;
+  animation-delay: .75s;
 }
 
 @keyframes animate4 {
-	0% {
-		bottom: -100%;
-	}
-
-	50%,
-	100% {
-		bottom: 100%;
-	}
+  0% { bottom: -100%; }
+  100% { bottom: 100%; }
 }
 
+/* ---------- Output + Copy Button ---------- */
 #output {
-	margin-top: 20px;
-	color: white;
-}
-
-#phone {
-	color: black;
+  margin-top: 20px;
+  color: var(--text-light);
+  font-size: 16px;
 }
 
 .copy-btn {
-	margin-top: 10px;
-	padding: 5px 10px;
-	background-color: #28a745;
-	color: white;
-	border: none;
-	cursor: pointer;
-	border-radius: 5px;
+  margin-top: 14px;
+  padding: 8px 14px;
+
+  background-color: #28a745;
+  border-radius: 8px;
+  border: none;
+  color: #fff;
+
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+.copy-btn:hover {
+  background-color: #1f8b39;
 }
 
 .copy-confirm {
-	margin-top: 10px;
-	color: #28a745;
+  margin-top: 10px;
+  color: #28a745;
+  font-weight: 600;
 }
