@@ -1,13 +1,16 @@
 /* ---------- ROOT COLORS ---------- */
 :root {
-  --bg: #0b0f12;
-  --card-bg: rgba(255, 255, 255, 0.15);
-  --card-border: rgba(255, 255, 255, 0.25);
-  --glass-blur: 14px;
+  --bg: #050709;
+  --card-bg: rgba(15, 18, 22, 0.65);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
 
   --accent: #03e9f4;
   --text-light: #ffffff;
-  --input-bg: rgba(255, 255, 255, 0.35);
+
+  /* Darker input background */
+  --input-bg: rgba(20, 24, 28, 0.85);
+  --input-border: rgba(255, 255, 255, 0.12);
 }
 
 /* ---------- BASE ---------- */
@@ -22,6 +25,13 @@ body {
   background-image: url("https://cdn.ironman.my.id/i/2iceb4.jpeg");
   background-size: cover;
   background-position: center;
+
+  animation: fadeInBody 1s ease forwards;
+}
+
+@keyframes fadeInBody {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ---------- CARD ---------- */
@@ -35,51 +45,81 @@ body {
   backdrop-filter: blur(var(--glass-blur));
   border-radius: 16px;
 
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+
+  transform: translateY(20px);
+  opacity: 0;
+  animation: fadeUp 0.8s ease forwards;
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* hover: lift effect */
 .card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
 }
 
 /* ---------- INPUT ---------- */
 input {
   width: 85%;
-  padding: 12px;
-  margin-bottom: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: 10px;
 
-  border: none;
-  border-radius: 8px;
+  /* Dark + always visible */
   background: var(--input-bg);
-  text-align: center;
+  border: 1px solid var(--input-border);
+  color: var(--text-light);
 
-  font-size: 15px;
-  transition: 0.3s ease;
+  text-align: center;
+  font-size: 16px;
+
+  transition: 0.25s ease;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.35); /* always visible shadow */
 }
 
 /* input hover / focus effect */
-input:hover,
+input:hover {
+  background: rgba(30, 34, 40, 0.9);
+}
+
 input:focus {
-  background: rgba(255, 255, 255, 0.55);
-  outline: 2px solid var(--accent);
+  background: rgba(40, 44, 50, 1);
+  border: 1px solid var(--accent);
+  box-shadow:
+    0 0 12px var(--accent),
+    0 0 22px rgba(3, 233, 244, 0.3);
+  outline: none;
+  transform: scale(1.03); /* popup effect */
 }
 
 /* ---------- NEON BUTTON ---------- */
 a {
   position: relative;
   padding: 14px 40px;
-  margin: 10px 0;
+  margin: 12px 0;
   color: #fff;
   text-decoration: none;
   letter-spacing: 2px;
   text-transform: uppercase;
 
-  transition: 0.4s ease;
+  transition: 0.35s ease;
   cursor: pointer;
   display: inline-block;
+
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* modern neon hover */
@@ -88,9 +128,10 @@ a:hover {
   color: #050801;
   border-radius: 6px;
   box-shadow:
-    0 0 6px var(--accent),
-    0 0 20px var(--accent),
-    0 0 40px var(--accent);
+    0 0 10px var(--accent),
+    0 0 28px var(--accent),
+    0 0 55px var(--accent);
+  transform: translateY(-3px);
 }
 
 /* ---------- BUTTON ANIMATED BORDER ---------- */
@@ -99,7 +140,6 @@ a span {
   display: block;
 }
 
-/* smoother glow */
 a span:nth-child(1),
 a span:nth-child(3) {
   height: 3px;
@@ -109,18 +149,13 @@ a span:nth-child(4) {
   width: 3px;
 }
 
-/* animations remain same (looks good) */
 a span:nth-child(1) {
   top: 0; left: 0;
   width: 100%;
   background: linear-gradient(90deg, transparent, var(--accent));
   animation: animate1 2s linear infinite;
 }
-
-@keyframes animate1 {
-  0% { left: -100%; }
-  100% { left: 100%; }
-}
+@keyframes animate1 { 0% { left: -100%; } 100% { left: 100%; } }
 
 a span:nth-child(2) {
   top: -100%; right: 0;
@@ -129,11 +164,7 @@ a span:nth-child(2) {
   animation: animate2 2s linear infinite;
   animation-delay: .25s;
 }
-
-@keyframes animate2 {
-  0% { top: -100%; }
-  100% { top: 100%; }
-}
+@keyframes animate2 { 0% { top: -100%; } 100% { top: 100%; } }
 
 a span:nth-child(3) {
   bottom: 0; right: 0;
@@ -142,11 +173,7 @@ a span:nth-child(3) {
   animation: animate3 2s linear infinite;
   animation-delay: .5s;
 }
-
-@keyframes animate3 {
-  0% { right: -100%; }
-  100% { right: 100%; }
-}
+@keyframes animate3 { 0% { right: -100%; } 100% { right: 100%; } }
 
 a span:nth-child(4) {
   bottom: -100%; left: 0;
@@ -155,11 +182,7 @@ a span:nth-child(4) {
   animation: animate4 2s linear infinite;
   animation-delay: .75s;
 }
-
-@keyframes animate4 {
-  0% { bottom: -100%; }
-  100% { bottom: 100%; }
-}
+@keyframes animate4 { 0% { bottom: -100%; } 100% { bottom: 100%; } }
 
 /* ---------- Output + Copy Button ---------- */
 #output {
@@ -179,13 +202,22 @@ a span:nth-child(4) {
 
   cursor: pointer;
   transition: 0.25s ease;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
 }
+
 .copy-btn:hover {
   background-color: #1f8b39;
+  transform: scale(1.05);
 }
 
 .copy-confirm {
   margin-top: 10px;
   color: #28a745;
   font-weight: 600;
+  opacity: 0;
+  animation: fadeIn 0.4s forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
 }
