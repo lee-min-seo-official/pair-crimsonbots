@@ -15,105 +15,125 @@ const { Mutex } = require('async-mutex');
 const config = require('./config');
 const path = require('path');
 
-var app = express();
-var port = 3000;
-var session;
+const app = express();
+const port = 3000;
+let session;
 const msgRetryCounterCache = new NodeCache();
 const mutex = new Mutex();
+
 app.use(express.static(path.join(__dirname, 'static')));
 
 async function connector(Num, res) {
-    var sessionDir = './session';
-    if (!fs.existsSync(sessionDir)) {
-        fs.mkdirSync(sessionDir);
-    }
-    var { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+    const sessionDir = './session';
+    if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir);
+
+    const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
     session = makeWASocket({
         auth: {
             creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' }))
+            keys: makeCacheableSignalKeyStore(
+                state.keys,
+                pino({ level: 'fatal' })
+            )
         },
-      //  printQRInTerminal: false,
-        logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
-        browser: Browsers.macOS("Safari"), //check docs for more custom options
-        markOnlineOnConnect: true, //true or false yoour choice
+        logger: pino({ level: 'fatal' }),
+        browser: Browsers.macOS("Safari"),
+        markOnlineOnConnect: true,
         msgRetryCounterCache
     });
 
     if (!session.authState.creds.registered) {
         await delay(1500);
         Num = Num.replace(/[^0-9]/g, '');
-        var code = await session.requestPairingCode(Num);
+        const code = await session.requestPairingCode(Num);
         if (!res.headersSent) {
             res.send({ code: code?.match(/.{1,4}/g)?.join('-') });
         }
     }
 
-    session.ev.on('creds.update', async () => {
-        await saveCreds();
-    });
+    session.ev.on('creds.update', saveCreds);
 
     session.ev.on('connection.update', async (update) => {
-        var { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect } = update;
+
         if (connection === 'open') {
             console.log('Connected successfully');
+
             await delay(5000);
-            var myr = await session.sendMessage(session.user.id, { text: `${config.MESSAGE}` });
-            var pth = './session/creds.json';
+
+            const myr = await session.sendMessage(session.user.id, {
+                text: config.MESSAGE
+            });
+
+            const pth = './session/creds.json';
+
             try {
-                var url = await upload(pth);
-                var sID;
+                const url = await upload(pth);
+
+                let sID;
                 if (url.includes("https://mega.nz/file/")) {
                     sID = config.PREFIX + url.split("https://mega.nz/file/")[1];
                 } else {
-                    sID = 'Fekd up';
+                    sID = "UPLOAD_FAILED";
                 }
-              //edit this you can add ur own image in config or not ur choice
-              await session.sendMessage(session.user.id, { image: { url: `${config.IMAGE}` }, caption: `*Session ID*\n\n${sID}` }, { quoted: myr });
-            
-            } catch (error) {
-                console.error('Error:', error);
-            } setTimeout(() => {
-    try {
-        session.end();
-        fs.rmSync('./session', { recursive: true, force: true });
-        console.log("Session closed and cleaned safely");
-    } catch (e) {
-        console.error("Cleanup failed:", e);
-    }
-}, 3000);
-                }
+
+                await session.sendMessage(
+                    session.user.id,
+                    {
+                        image: { url: config.IMAGE },
+                        caption: `*Session ID*\n\n${sID}`
+                    },
+                    { quoted: myr }
+                );
+            } catch (err) {
+                console.error("Upload error:", err);
             }
-        } else if (connection === 'close') {
-            var reason = lastDisconnect?.error?.output?.statusCode;
+
+            // Safe cleanup AFTER everything is done
+            setTimeout(() => {
+                try {
+                    session.end();
+                    fs.rmSync('./session', { recursive: true, force: true });
+                    console.log("Session closed and cleaned safely");
+                } catch (e) {
+                    console.error("Cleanup failed:", e);
+                }
+            }, 4000);
+        }
+
+        if (connection === 'close') {
+            const reason = lastDisconnect?.error?.output?.statusCode;
             reconn(reason);
         }
     });
 }
 
 function reconn(reason) {
-    if ([DisconnectReason.connectionLost, DisconnectReason.connectionClosed, DisconnectReason.restartRequired].includes(reason)) {
-        console.log('Connection lost, reconnecting...');
+    if (
+        [DisconnectReason.connectionLost,
+         DisconnectReason.connectionClosed,
+         DisconnectReason.restartRequired].includes(reason)
+    ) {
+        console.log("Connection lost, reconnecting...");
         connector();
-    }else {
-    console.log(`Logged out or invalid session (${reason}). Not reconnecting.`);
-}
+    } else if (reason === 401 || reason === DisconnectReason.loggedOut) {
+        console.log("Pairing device logged out (normal). Waiting for next request.");
+    } else {
+        console.log("Disconnected:", reason);
+    }
 }
 
 app.get('/pair', async (req, res) => {
-    var Num = req.query.code;
-    if (!Num) {
-        return res.status(418).json({ message: 'Phone number is required' });
-    }
-  
-  //you can remove mutex if you dont want to queue the requests
-    var release = await mutex.acquire();
+    const Num = req.query.code;
+    if (!Num) return res.status(418).json({ message: 'Phone number is required' });
+
+    const release = await mutex.acquire();
     try {
         await connector(Num, res);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "fekd up"});
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal error" });
     } finally {
         release();
     }
