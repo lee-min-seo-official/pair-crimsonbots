@@ -52,60 +52,52 @@ if (!session.authState.creds.registered) {
 
     session.ev.on('creds.update', saveCreds);
 
-    session.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+session.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect } = update;
 
-        if (connection === 'open') {
-            console.log('Connected successfully');
+    if (connection === 'open') {
+        console.log('Device linked successfully');
 
-            await delay(5000);
+        const myr = await session.sendMessage(session.user.id, {
+            text: config.MESSAGE
+        });
 
-            const myr = await session.sendMessage(session.user.id, {
-                text: config.MESSAGE
-            });
+        try {
+            const url = await upload('./session/creds.json');
 
-            const pth = './session/creds.json';
-
-            try {
-                const url = await upload(pth);
-
-                let sID;
-                if (url.includes("https://mega.nz/file/")) {
-                    sID = config.PREFIX + url.split("https://mega.nz/file/")[1];
-                } else {
-                    sID = "UPLOAD_FAILED";
-                }
-
-                await session.sendMessage(
-                    session.user.id,
-                    {
-                        image: { url: config.IMAGE },
-                        caption: `*Session ID*\n\n${sID}`
-                    },
-                    { quoted: myr }
-                );
-            } catch (err) {
-                console.error("Upload error:", err);
+            let sID = "UPLOAD_FAILED";
+            if (url.includes("https://mega.nz/file/")) {
+                sID = config.PREFIX + url.split("https://mega.nz/file/")[1];
             }
 
-            // Safe cleanup AFTER everything is done
-            setTimeout(() => {
-                try {
-                    session.end();
-                    fs.rmSync('./session', { recursive: true, force: true });
-                    console.log("Session closed and cleaned safely");
-                } catch (e) {
-                    console.error("Cleanup failed:", e);
-                }
-            }, 4000);
+            await session.sendMessage(
+                session.user.id,
+                {
+                    image: { url: config.IMAGE },
+                    caption: `*Session ID*\n\n${sID}`
+                },
+                { quoted: myr }
+            );
+        } catch (e) {
+            console.error("Upload error:", e);
+        }
+    }
+
+    if (connection === 'close') {
+        const reason = lastDisconnect?.error?.output?.statusCode;
+
+        // NOW pairing is finished, WhatsApp closed the temp device
+        if (reason === 401 || reason === DisconnectReason.loggedOut) {
+            console.log("Pairing finished, cleaning session");
+
+            try {
+                fs.rmSync('./session', { recursive: true, force: true });
+            } catch {}
         }
 
-        if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode;
-            reconn(reason);
-        }
-    });
-}
+        reconn(reason);
+    }
+});
 
 function reconn(reason) {
     if (
