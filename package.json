@@ -1,5 +1,5 @@
 {
-  "name": "pair",
+  "name": "pair-xlee",
   "version": "1.0.0",
   "description": "simple pairing code example",
   "main": "index.js",
@@ -19,7 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "async-mutex": "^0.5.0",
-   "baileys": "git+https://github.com/WhiskeySockets/Baileys.git",
+    "baileys": "git+https://github.com/WhiskeySockets/Baileys.git",
     "express": "^4.21.1",
     "megajs": "*",
     "node-cache": "^5.1.2",
