@@ -19,7 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "async-mutex": "^0.5.0",
-    "baileys": "github:WhiskeySockets/Baileys",
+    "baileys": "^7.0.0-rc.9",
     "express": "^4.21.1",
     "megajs": "*",
     "node-cache": "^5.1.2",
