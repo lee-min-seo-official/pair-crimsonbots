@@ -8,8 +8,7 @@ const {
     delay,
     Browsers,
     makeCacheableSignalKeyStore,
-    DisconnectReason,
-    fetchLatestBaileysVersion
+    DisconnectReason
 } = require('baileys');
 const { upload } = require('./mega');
 const { Mutex } = require('async-mutex');
@@ -24,6 +23,9 @@ const mutex = new Mutex();
 
 app.use(express.static(path.join(__dirname, 'static')));
 
+// Known stable WA Web version — avoids fetchLatestBaileysVersion returning bad versions
+const WA_VERSION = [2, 3000, 1015901307];
+
 function cleanSession() {
     var sessionDir = path.join(__dirname, 'session');
     if (fs.existsSync(sessionDir)) {
@@ -32,17 +34,15 @@ function cleanSession() {
 }
 
 async function connector(Num, res) {
-    // Wipe any stale session — critical to avoid 405
     cleanSession();
     fs.mkdirSync(path.join(__dirname, 'session'));
 
-    const { version } = await fetchLatestBaileysVersion();
-    console.log('Using WA version:', version.join('.'));
+    console.log('Using WA version:', WA_VERSION.join('.'));
 
     var { state, saveCreds } = await useMultiFileAuthState('./session');
 
     session = makeWASocket({
-        version,
+        version: WA_VERSION,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(
@@ -53,7 +53,15 @@ async function connector(Num, res) {
         logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
         browser: Browsers.ubuntu('Chrome'),
         markOnlineOnConnect: true,
-        msgRetryCounterCache
+        msgRetryCounterCache,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+        emitOwnEvents: true,
+        fireInitQueries: true,
+        generateHighQualityLinkPreview: false,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false,
     });
 
     if (!session.authState.creds.registered) {
@@ -72,11 +80,20 @@ async function connector(Num, res) {
     });
 
     session.ev.on('connection.update', async (update) => {
-        var { connection, lastDisconnect } = update;
-        console.log('connection.update:', connection, lastDisconnect?.error?.message || '');
+        var { connection, lastDisconnect, qr, receivedPendingNotifications } = update;
+
+        // Log full update object so we can see everything
+        console.log('connection.update full:', JSON.stringify(update, null, 2));
+
+        if (!connection) return; // skip undefined connection state updates
+
+        if (connection === 'connecting') {
+            console.log('Connecting to WhatsApp...');
+            return;
+        }
 
         if (connection === 'open') {
-            console.log('Connected successfully');
+            console.log('Connected successfully!');
             await delay(5000);
 
             var myr = await session.sendMessage(session.user.id, {
@@ -102,6 +119,8 @@ async function connector(Num, res) {
                     },
                     { quoted: myr }
                 );
+
+                console.log('Session ID sent successfully:', sID);
             } catch (error) {
                 console.error('Upload/send error:', error);
             } finally {
@@ -110,7 +129,8 @@ async function connector(Num, res) {
 
         } else if (connection === 'close') {
             var reason = lastDisconnect?.error?.output?.statusCode;
-            console.log('Close reason code:', reason);
+            var errorMsg = lastDisconnect?.error?.message;
+            console.log(`Connection closed. Reason: ${reason}, Message: ${errorMsg}`);
             reconn(reason);
         }
     });
