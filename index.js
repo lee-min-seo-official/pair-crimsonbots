@@ -20,31 +20,56 @@ var port = 3000;
 var session;
 const msgRetryCounterCache = new NodeCache();
 const mutex = new Mutex();
+
 app.use(express.static(path.join(__dirname, 'static')));
 
-async function connector(Num, res) {
-    var sessionDir = './session';
-    if (!fs.existsSync(sessionDir)) {
-        fs.mkdirSync(sessionDir);
+// Known stable WA Web version — avoids fetchLatestBaileysVersion returning bad versions
+const WA_VERSION = [2, 3000, 1023886109];
+
+function cleanSession() {
+    var sessionDir = path.join(__dirname, 'session');
+    if (fs.existsSync(sessionDir)) {
+        fs.rmSync(sessionDir, { recursive: true, force: true });
     }
-    var { state, saveCreds } = await useMultiFileAuthState(sessionDir);
+}
+
+async function connector(Num, res) {
+    cleanSession();
+    fs.mkdirSync(path.join(__dirname, 'session'));
+
+    console.log('Using WA version:', WA_VERSION.join('.'));
+
+    var { state, saveCreds } = await useMultiFileAuthState('./session');
 
     session = makeWASocket({
+        version: WA_VERSION,
         auth: {
             creds: state.creds,
-            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }).child({ level: 'fatal' }))
+            keys: makeCacheableSignalKeyStore(
+                state.keys,
+                pino({ level: 'fatal' }).child({ level: 'fatal' })
+            )
         },
-      //  printQRInTerminal: false,
         logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
-        browser: Browsers.macOS("Safari"), //check docs for more custom options
-        markOnlineOnConnect: true, //true or false yoour choice
-        msgRetryCounterCache
+        browser: Browsers.ubuntu('Chrome'),
+        markOnlineOnConnect: true,
+        msgRetryCounterCache,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
+        emitOwnEvents: true,
+        fireInitQueries: true,
+        generateHighQualityLinkPreview: false,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => false,
     });
 
     if (!session.authState.creds.registered) {
         await delay(1500);
         Num = Num.replace(/[^0-9]/g, '');
+        console.log('Requesting pairing code for:', Num);
         var code = await session.requestPairingCode(Num);
+        console.log('Got code:', code);
         if (!res.headersSent) {
             res.send({ code: code?.match(/.{1,4}/g)?.join('-') });
         }
@@ -55,45 +80,73 @@ async function connector(Num, res) {
     });
 
     session.ev.on('connection.update', async (update) => {
-        var { connection, lastDisconnect } = update;
+        var { connection, lastDisconnect, qr, receivedPendingNotifications } = update;
+
+        // Log full update object so we can see everything
+        console.log('connection.update full:', JSON.stringify(update, null, 2));
+
+        if (!connection) return; // skip undefined connection state updates
+
+        if (connection === 'connecting') {
+            console.log('Connecting to WhatsApp...');
+            return;
+        }
+
         if (connection === 'open') {
-            console.log('Connected successfully');
+            console.log('Connected successfully!');
             await delay(5000);
-            var myr = await session.sendMessage(session.user.id, { text: `${config.MESSAGE}` });
+
+            var myr = await session.sendMessage(session.user.id, {
+                text: `${config.MESSAGE}`
+            });
+
             var pth = './session/creds.json';
+
             try {
                 var url = await upload(pth);
                 var sID;
-                if (url.includes("https://mega.nz/file/")) {
-                    sID = config.PREFIX + url.split("https://mega.nz/file/")[1];
+                if (url.includes('https://mega.nz/file/')) {
+                    sID = config.PREFIX + url.split('https://mega.nz/file/')[1];
                 } else {
                     sID = 'Fekd up';
                 }
-              //edit this you can add ur own image in config or not ur choice
-              await session.sendMessage(session.user.id, { image: { url: `${config.IMAGE}` }, caption: `*Session ID*\n\n${sID}` }, { quoted: myr });
-            
+
+                await session.sendMessage(
+                    session.user.id,
+                    {
+                        image: { url: `${config.IMAGE}` },
+                        caption: `*Session ID*\n\n${sID}`
+                    },
+                    { quoted: myr }
+                );
+
+                console.log('Session ID sent successfully:', sID);
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Upload/send error:', error);
             } finally {
-                //await delay(500);
-                if (fs.existsSync(path.join(__dirname, './session'))) {
-                    fs.rmdirSync(path.join(__dirname, './session'), { recursive: true });
-                }
+                cleanSession();
             }
+
         } else if (connection === 'close') {
             var reason = lastDisconnect?.error?.output?.statusCode;
+            var errorMsg = lastDisconnect?.error?.message;
+            console.log(`Connection closed. Reason: ${reason}, Message: ${errorMsg}`);
             reconn(reason);
         }
     });
 }
 
 function reconn(reason) {
-    if ([DisconnectReason.connectionLost, DisconnectReason.connectionClosed, DisconnectReason.restartRequired].includes(reason)) {
+    if ([
+        DisconnectReason.connectionLost,
+        DisconnectReason.connectionClosed,
+        DisconnectReason.restartRequired
+    ].includes(reason)) {
         console.log('Connection lost, reconnecting...');
         connector();
     } else {
         console.log(`Disconnected! reason: ${reason}`);
-        session.end();
+        if (session) session.end();
     }
 }
 
@@ -102,14 +155,15 @@ app.get('/pair', async (req, res) => {
     if (!Num) {
         return res.status(418).json({ message: 'Phone number is required' });
     }
-  
-  //you can remove mutex if you dont want to queue the requests
+
     var release = await mutex.acquire();
     try {
         await connector(Num, res);
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "fekd up"});
+        console.error('Connector error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'fekd up' });
+        }
     } finally {
         release();
     }
