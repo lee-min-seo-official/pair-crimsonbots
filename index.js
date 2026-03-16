@@ -24,13 +24,18 @@ const mutex = new Mutex();
 
 app.use(express.static(path.join(__dirname, 'static')));
 
+function cleanSession() {
+    var sessionDir = path.join(__dirname, './session');
+    if (fs.existsSync(sessionDir)) {
+        fs.rmSync(sessionDir, { recursive: true, force: true }); // no deprecation warning
+    }
+}
+
 async function connector(Num, res) {
     var sessionDir = './session';
 
-    // Always wipe stale session before pairing to avoid 405/loggedOut
-    if (fs.existsSync(sessionDir)) {
-        fs.rmdirSync(sessionDir, { recursive: true });
-    }
+    // Always start with a clean session to avoid stale creds causing 405/link failure
+    cleanSession();
     fs.mkdirSync(sessionDir);
 
     const { version } = await fetchLatestBaileysVersion();
@@ -46,7 +51,7 @@ async function connector(Num, res) {
             )
         },
         logger: pino({ level: 'fatal' }).child({ level: 'fatal' }),
-        browser: Browsers.ubuntu('Chrome'), // more stable than macOS Safari
+        browser: Browsers.ubuntu('Chrome'),
         markOnlineOnConnect: true,
         msgRetryCounterCache
     });
@@ -97,10 +102,7 @@ async function connector(Num, res) {
             } catch (error) {
                 console.error('Upload/send error:', error);
             } finally {
-                // Clean up session dir after done
-                if (fs.existsSync(path.join(__dirname, './session'))) {
-                    fs.rmdirSync(path.join(__dirname, './session'), { recursive: true });
-                }
+                cleanSession();
             }
 
         } else if (connection === 'close') {
